@@ -1,0 +1,44 @@
+# API keys & secrets
+.env
+*.env
+credentials.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Model weights & checkpoints
+*.bin
+*.safetensors
+*.pt
+*.pth
+checkpoints/
+output/
+*.ckpt
+
+# Data files (large)
+*.parquet
+*.json
+!package.json
+
+# Training logs & results
+results_*/
+wandb/
+runs/
+*.log
+agent0_storage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
