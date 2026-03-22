@@ -122,18 +122,55 @@ setup() {
     mkdir -p "$DATA_DIR"
 
     # Prepare AIME2025 eval data
-    python3 << 'PYEOF'
+    # Priority:
+    #   1) Reuse existing aime2025_val.parquet
+    #   2) Build val from local aime2025_test.parquet
+    #   3) Download from HuggingFace only if needed
+    # Set FORCE_REBUILD_VAL=1 to rebuild val even if it already exists.
+    local val_file="$DATA_DIR/aime2025_val.parquet"
+    local test_file="$DATA_DIR/aime2025_test.parquet"
+
+    if [ -f "$val_file" ] && [ "${FORCE_REBUILD_VAL:-0}" != "1" ]; then
+        echo "Reusing existing val file: $val_file"
+    else
+        if [ -f "$test_file" ]; then
+            echo "Building val file from local test file: $test_file"
+            DATA_DIR="$DATA_DIR" python3 << 'PYEOF'
+import os
+import pandas as pd
+
+data_dir = os.environ["DATA_DIR"]
+test_path = os.path.join(data_dir, "aime2025_test.parquet")
+val_path = os.path.join(data_dir, "aime2025_val.parquet")
+
+df = pd.read_parquet(test_path)
+if {"prompt", "answer"}.issubset(df.columns):
+    val_df = df[["prompt", "answer"]].copy()
+elif {"question", "answer"}.issubset(df.columns):
+    val_df = df[["question", "answer"]].rename(columns={"question": "prompt"}).copy()
+else:
+    raise ValueError(f"Unexpected schema in {test_path}: {list(df.columns)}")
+
+val_df["answer"] = val_df["answer"].astype(str)
+val_df.to_parquet(val_path, index=False)
+print(f"AIME2025 val set created from local test: {len(val_df)} problems -> {val_path}")
+PYEOF
+        else
+            echo "Local test file not found, downloading AIME2025 from HuggingFace..."
+            DATA_DIR="$DATA_DIR" python3 << 'PYEOF'
 import os
 from datasets import load_dataset, concatenate_datasets, Dataset
-DATA_DIR = os.environ["DATA_DIR"]
+
+data_dir = os.environ["DATA_DIR"]
 aime1 = load_dataset("opencompass/AIME2025", "AIME2025-I", split="test")
 aime2 = load_dataset("opencompass/AIME2025", "AIME2025-II", split="test")
 full = concatenate_datasets([aime1, aime2])
-# Format cho executor_train eval
 records = [{"prompt": r["question"], "answer": str(r["answer"])} for r in full]
-Dataset.from_list(records).to_parquet(f"{DATA_DIR}/aime2025_val.parquet")
-print(f"AIME2025 val set: {len(records)} problems")
+Dataset.from_list(records).to_parquet(f"{data_dir}/aime2025_val.parquet")
+print(f"AIME2025 val set downloaded and created: {len(records)} problems")
 PYEOF
+        fi
+    fi
 
     nvidia-smi
     log "Setup complete!"

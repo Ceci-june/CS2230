@@ -209,6 +209,7 @@ bash run_agent0_train.sh all
 
 Mục đích:
 - Chạy full co-evolution Curriculum Agent ↔ Executor Agent theo nhiều iteration.
+- Ở bước `setup`, script ưu tiên tái sử dụng dữ liệu local để tránh tải lại AIME2025.
 
 Mode phổ biến:
 - `setup`, `test`, `all`
@@ -220,6 +221,27 @@ Ví dụ:
 ```bash
 bash run_agent0_full.sh setup
 bash run_agent0_full.sh iter 1
+```
+
+#### Cách `setup` tạo `aime2025_val.parquet` (mới)
+
+`setup` xử lý theo thứ tự ưu tiên sau:
+
+1. Nếu đã có `aime2025_val.parquet` và không bật cờ ép rebuild → **dùng lại luôn**.
+2. Nếu chưa có val nhưng có `aime2025_test.parquet` → **tạo val từ file local** (map `question -> prompt`, giữ `answer`).
+3. Chỉ khi thiếu cả hai file local mới **tải từ Hugging Face** rồi tạo `aime2025_val.parquet`.
+
+Cờ ép tạo lại val:
+
+```bash
+FORCE_REBUILD_VAL=1 bash run_agent0_full.sh setup
+```
+
+Ví dụ chạy không tải lại data (khi đã có `aime2025_test.parquet`):
+
+```bash
+export DATA_DIR=/path/to/Data/aime2025
+bash run_agent0_full.sh setup
 ```
 
 #### Giải thích chi tiết theo luồng code (`run_agent0_full.sh`)
@@ -244,7 +266,10 @@ Phần này là bản “đọc code theo thứ tự chạy”, để bạn map 
 - Tạo/activate conda env `agent0` (nếu có conda).
 - Cài dependencies (`datasets`, `openai`, `mathruler`, `verl`, ...).
 - Tạo thư mục lưu kết quả trong `agent0_storage/`.
-- Tải AIME2025 và tạo `aime2025_val.parquet` (format `prompt`/`answer`).
+- Tạo `aime2025_val.parquet` theo ưu tiên local-first:
+   - reuse `aime2025_val.parquet` nếu đã có,
+   - nếu chưa có thì build từ `aime2025_test.parquet`,
+   - fallback tải từ Hugging Face nếu thiếu file local.
 
 4) **Hàm `train_curriculum()`**
 - Start vLLM service trên GPU 1 để phục vụ reward/self-consistency.
