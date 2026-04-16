@@ -23,8 +23,6 @@ output/
 
 # Data files (large)
 *.parquet
-*.json
-!package.json
 
 # Training logs & results
 results_*/
@@ -32,6 +30,13 @@ wandb/
 runs/
 *.log
 agent0_storage/
+
+# Large data dirs
+Data/FinQA/
+Data/TAT-QA/
+
+# Vector index (regenerable)
+*.index.json
 
 # OS
 .DS_Store
