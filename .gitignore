@@ -34,6 +34,7 @@ agent0_storage/
 # Large data dirs
 Data/FinQA/
 Data/TAT-QA/
+Data/aime2025/
 
 # Vector index (regenerable)
 *.index.json
